@@ -1,6 +1,3 @@
-
-
-
 #include <asf.h>
 
 #define BufferSize 16
@@ -26,6 +23,9 @@ uint32_t Measure0, Measure1, Measure2;
 
 int main (void)
 {
+	
+	SystemInit();
+	board_init();
 
 	//pmc_osc_disable_fastrc();
 	
@@ -41,7 +41,7 @@ int main (void)
 	PMC->CKGR_MOR = PMC->CKGR_MOR & ~(CKGR_MOR_MOSCXTBY | CKGR_MOR_MOSCRCEN);
 	
 	PMC->CKGR_MOR = PMC->CKGR_MOR | CKGR_MOR_KEY_PASSWD | CKGR_MOR_MOSCXTEN
-	;//| CKGR_MOR_MOSCXTST(pmc_us_to_moscxtst(BOARD_OSC_STARTUP_US, OSC_SLCK_32K_RC_HZ));
+	| CKGR_MOR_MOSCXTST(pmc_us_to_moscxtst(BOARD_OSC_STARTUP_US, OSC_SLCK_32K_RC_HZ));
 	
 	//wait for crystal to become ready		
 	while (!(PMC->PMC_SR & PMC_SR_MOSCXTS));
@@ -61,21 +61,26 @@ int main (void)
 	//select processer prescaler (0 - no divisor)
 	PMC->PMC_MCKR |= PMC_MCKR_PRES_CLK_1;
 	
-	//select processer prescaler (div 4) 20mhz/4 = 5mhz
+	//select processer prescaler (div 4) 12mhz/4 = 3mhz
 	//PMC->PMC_MCKR |= PMC_MCKR_PRES_CLK_4;
 	//wait until main clock ready
 	while (!(PMC->PMC_SR & PMC_SR_MCKRDY));
 
-	//20MHz / 4 = 5MHz, 5MHz * (9+1) = 50MHz
+
+	//pmc_enable_pllbck(9, PLLB_ID, 1);
+
+	pmc_disable_pllbck();
+	pll_enable_config_defaults(PLLB_ID);
+	//12MHz * (9+1) = 120MHz
 	PMC->CKGR_PLLBR |= CKGR_PLLBR_MULB(9);
-	PMC->CKGR_PLLBR |= CKGR_PLLBR_DIVB(4);
+	PMC->CKGR_PLLBR |= CKGR_PLLBR_DIVB(1);
+	//PMC->CKGR_PLLBR |= CKGR_PLLBR_PLLBCOUNT(PLL_COUNT);
+	
+	while ((PMC->PMC_SR & PMC_SR_LOCKB) == 0);
 
 	//select PLLB as the master clock
-	//master clock source selection - choose main clock
-	//PMC->PMC_MCKR |= PMC_MCKR_CSS_PLLB_CLK;
+	PMC->PMC_MCKR |= PMC_MCKR_CSS_PLLB_CLK;
 	
-	SystemInit();
-	board_init();
 	
 	Init_SPI_2();
 	
